@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>字幕校对工作台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg-primary:#0d1117;--bg-secondary:#161b22;--bg-tertiary:#1c2333;--bg-card:#21262d;
+--border:#30363d;--text-primary:#c9d1d9;--text-secondary:#8b949e;--text-muted:#484f58;
+--accent:#58a6ff;--accent-hover:#79b8ff;--success:#3fb950;--success-bg:rgba(63,185,80,0.08);
+--danger:#f85149;--danger-bg:rgba(248,81,73,0.08);--warning:#d29922;--warning-bg:rgba(210,153,34,0.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg-primary);color:var(--text-primary);height:100vh;overflow:hidden}
+
+.header{height:56px;background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px}
+.logo{display:flex;align-items:center;gap:12px;font-size:18px;font-weight:600}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),#a371f7);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.layout{display:flex;height:calc(100vh - 56px)}
+
+.sidebar{width:320px;background:var(--bg-secondary);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-section{padding:20px;border-bottom:1px solid var(--border)}
+.sidebar-section:last-child{border-bottom:none;flex:1}
+.section-title{font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.upload-zone{border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;transition:all .3s;cursor:pointer;margin-bottom:12px}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:rgba(88,166,255,.05)}
+.upload-zone.has-file{border-color:var(--success);background:var(--success-bg)}
+.upload-icon{font-size:32px;margin-bottom:8px}
+.upload-label{font-size:14px;font-weight:500;margin-bottom:4px}
+.upload-hint{font-size:12px;color:var(--text-muted)}
+.file-selected{font-size:12px;color:var(--success);margin-top:6px;display:none}
+.upload-zone.has-file .file-selected{display:block}
+.step-indicator{display:inline-block;width:20px;height:20px;background:var(--accent);color:#fff;border-radius:50%;font-size:12px;line-height:20px;text-align:center;margin-right:8px;font-weight:600}
+.process-btn{width:100%;padding:12px;background:linear-gradient(135deg,#238636,#2ea043);color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:all .3s;margin-top:12px}
+.process-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(46,160,67,.4)}
+.process-btn:disabled{background:var(--bg-card);color:var(--text-muted);cursor:not-allowed;transform:none;box-shadow:none}
+.stats-grid{display:flex;flex-direction:column;gap:8px}
+.stat-item{background:var(--bg-card);border-radius:8px;padding:12px;display:flex;align-items:center;justify-content:space-between}
+.stat-label{font-size:13px;color:var(--text-secondary)}
+.stat-value{font-size:18px;font-weight:700}
+.stat-value.blue{color:var(--accent)}
+.stat-value.green{color:var(--success)}
+.stat-value.orange{color:var(--warning)}
+.stat-value.red{color:var(--danger)}
+.download-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .3s;display:none}
+.download-btn:hover{background:var(--accent-hover)}
+.download-btn.show{display:block}
+.main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.result-layout{display:none;flex:1;overflow:hidden}
+.result-layout.show{display:flex}
+.side-tabs{width:130px;background:var(--bg-secondary);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:12px;gap:4px}
+.side-tab-btn{padding:12px 14px;background:none;border:none;color:var(--text-secondary);font-size:13px;cursor:pointer;border-radius:8px;text-align:left;transition:all .2s;display:flex;align-items:center;gap:8px}
+.side-tab-btn:hover{background:var(--bg-card);color:var(--text-primary)}
+.side-tab-btn.active{background:var(--accent);color:#fff}
+.side-tab-icon{font-size:16px}
+.tab-content-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.tab-panel{display:none;flex:1;overflow-y:auto}
+.tab-panel.active{display:block}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-muted);padding:40px;height:100%}
+.empty-icon{font-size:64px;margin-bottom:16px;opacity:.5}
+.empty-title{font-size:20px;font-weight:600;color:var(--text-secondary);margin-bottom:8px}
+.empty-desc{font-size:14px;max-width:400px;text-align:center;line-height:1.6}
+
+.timeline-header{padding:16px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary)}
+.timeline-stats{display:flex;gap:16px;margin-left:auto;font-size:12px}
+.ts-badge{display:flex;align-items:center;gap:4px}
+.ts-dot{width:8px;height:8px;border-radius:50%}
+.ts-dot.green{background:var(--success)}
+.ts-dot.gray{background:var(--text-muted)}
+.ts-dot.red{background:var(--danger)}
+.ts-dot.yellow{background:var(--warning)}
+
+.timeline-row{display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--border);min-height:72px;transition:background .15s}
+.timeline-row:hover{background:var(--bg-card)}
+.timeline-row.modified{border-left:3px solid var(--success)}
+.timeline-row.extra{border-left:3px solid var(--danger);background:var(--danger-bg)}
+.timeline-row.missing{border-left:3px solid var(--warning);background:var(--warning-bg)}
+.timeline-row.unchanged{border-left:3px solid transparent}
+
+.timeline-time{padding:14px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border);background:var(--bg-secondary)}
+.timeline-time .entry-idx{font-size:11px;color:var(--text-muted);margin-bottom:4px}
+.timeline-time .entry-time{font-size:12px;color:var(--text-secondary);font-family:'SF Mono','Fira Code',monospace}
+.timeline-time .entry-chinese{font-size:12px;color:var(--warning);margin-top:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.timeline-body{padding:10px 16px;display:flex;flex-direction:column;gap:6px;justify-content:center}
+.timeline-rec-text{font-size:14px;color:var(--text-muted);line-height:1.4}
+.timeline-corrected-text{font-size:14px;color:var(--success);line-height:1.4}
+.timeline-status{display:flex;align-items:center;gap:8px;margin-top:2px}
+.status-badge{padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.status-badge.modified{background:var(--success-bg);color:var(--success);border:1px solid var(--success)}
+.status-badge.unchanged{background:transparent;color:var(--text-muted);border:1px solid var(--border)}
+.status-badge.extra{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger)}
+.status-badge.missing{background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning)}
+
+.timeline-row.extra .timeline-corrected-text{display:none}
+.timeline-row.missing .timeline-rec-text{display:none}
+.timeline-row.unchanged .timeline-corrected-text{color:var(--text-secondary)}
+
+.preview-wrapper{display:flex;height:100%;min-height:0}
+.line-numbers{background:var(--bg-secondary);padding:20px 12px;text-align:right;font-family:'SF Mono','Fira Code',monospace;font-size:13px;color:var(--text-muted);user-select:none;border-right:1px solid var(--border);min-width:50px}
+.line-numbers div{line-height:1.6}
+.preview-content{flex:1;background:var(--bg-primary);padding:20px;font-family:'SF Mono','Fira Code',monospace;font-size:13px;line-height:1.6;white-space:pre;color:var(--text-primary);overflow-y:auto}
+</style>
+</head>
+<body>
+<header class="header">
+<div class="logo"><div class="logo-icon">S</div><span>字幕校对工作台</span></div>
+</header>
+<div class="layout">
+<aside class="sidebar">
+<div class="sidebar-section">
+<div class="section-title">上传字幕文件</div>
+<div class="upload-zone" id="originalZone">
+<span class="step-indicator">1</span><div class="upload-icon">📄</div>
+<div class="upload-label">原字幕文件</div><div class="upload-hint">包含中英文对照</div>
+<input type="file" id="originalFile" accept=".srt" hidden>
+<div class="file-selected" id="originalFileName">未选择文件</div>
+</div>
+<div class="upload-zone" id="recognizedZone">
+<span class="step-indicator">2</span><div class="upload-icon">🎤</div>
+<div class="upload-label">识别字幕文件</div><div class="upload-hint">语音识别结果</div>
+<input type="file" id="recognizedFile" accept=".srt" hidden>
+<div class="file-selected" id="recognizedFileName">未选择文件</div>
+</div>
+<button class="process-btn" id="processBtn" disabled>开始校对</button>
+</div>
+<div class="sidebar-section">
+<div class="section-title">统计信息</div>
+<div class="stats-grid">
+<div class="stat-item"><span class="stat-label">总条目</span><span class="stat-value blue" id="statTotal">-</span></div>
+<div class="stat-item"><span class="stat-label">已修正</span><span class="stat-value green" id="statModified">-</span></div>
+<div class="stat-item"><span class="stat-label">未变化</span><span class="stat-value" style="color:var(--text-muted)" id="statUnchanged">-</span></div>
+<div class="stat-item"><span class="stat-label">建议删除</span><span class="stat-value red" id="statExtra">-</span></div>
+<div class="stat-item"><span class="stat-label">建议新增</span><span class="stat-value orange" id="statMissing">-</span></div>
+</div>
+<button class="download-btn" id="downloadBtn">⬇️ 下载校对后字幕</button>
+</div>
+</aside>
+<main class="main-area">
+<div class="empty-state" id="emptyState">
+<div class="empty-icon">🎬</div>
+<div class="empty-title">欢迎使用字幕校对工作台</div>
+<div class="empty-desc">请在左侧上传原字幕文件和识别字幕文件，<br>系统将自动进行智能校对。</div>
+</div>
+<div class="result-layout" id="resultLayout">
+<div class="side-tabs">
+<button class="side-tab-btn active" data-tab="timeline"><span class="side-tab-icon">📋</span><span>五线谱对比</span></button>
+<button class="side-tab-btn" data-tab="preview"><span class="side-tab-icon">👁️</span><span>完整预览</span></button>
+</div>
+<div class="tab-content-area">
+<div class="tab-panel active" id="tab-timeline">
+<div class="timeline-header" id="timelineHeader" style="display:none">
+<span>字幕时间线</span>
+<div class="timeline-stats">
+<span class="ts-badge"><span class="ts-dot green"></span>已修正</span>
+<span class="ts-badge"><span class="ts-dot gray"></span>未变化</span>
+<span class="ts-badge"><span class="ts-dot red"></span>建议删除</span>
+<span class="ts-badge"><span class="ts-dot yellow"></span>建议新增</span>
+</div>
+</div>
+<div id="timelinePanel" style="height:100%;overflow-y:auto"></div>
+</div>
+<div class="tab-panel" id="tab-preview">
+<div class="preview-wrapper"><div class="line-numbers" id="lineNumbers"></div><div class="preview-content" id="previewContent"></div></div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const el={
+originalZone:$('originalZone'),recognizedZone:$('recognizedZone'),
+originalFile:$('originalFile'),recognizedFile:$('recognizedFile'),
+originalFileName:$('originalFileName'),recognizedFileName:$('recognizedFileName'),
+processBtn:$('processBtn'),emptyState:$('emptyState'),resultLayout:$('resultLayout'),
+statTotal:$('statTotal'),statModified:$('statModified'),statUnchanged:$('statUnchanged'),
+statExtra:$('statExtra'),statMissing:$('statMissing'),downloadBtn:$('downloadBtn'),
+timelinePanel:$('timelinePanel'),timelineHeader:$('timelineHeader'),
+previewContent:$('previewContent'),lineNumbers:$('lineNumbers')
+};
+let correctedSrtContent='';
+
+// ============ SRT 解析器 ============
+function parseSRT(content, isOriginal) {
+  const blocks = content.trim().split(/\n\s*\n/);
+  const entries = [];
+  for (const block of blocks) {
+    const lines = block.trim().split('\n');
+    if (lines.length < 3) continue;
+    const index = parseInt(lines[0].trim());
+    const timeMatch = lines[1].match(/(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})/);
+    if (!timeMatch) continue;
+    const startTime = timeMatch[1], endTime = timeMatch[2];
+    let text = '', chinese = '', english = '', speaker = null;
+    if (isOriginal) {
+      const textLines = lines.slice(2);
+      const speakerMatch = textLines[0] && textLines[0].match(/\[(female|male)\](.*?):/);
+      if (speakerMatch) { speaker = speakerMatch[2]; textLines.shift(); }
+      if (textLines.length >= 2) {
+        chinese = textLines[0];
+        english = textLines.slice(1).join('\n');
+      } else if (textLines.length === 1) {
+        chinese = textLines[0];
+        english = '';
+      }
+      text = textLines.join('\n');
+    } else {
+      text = lines.slice(2).join('\n').trim();
+      english = text;
+    }
+    entries.push({ index, startTime, endTime, text, chinese, english, speaker });
+  }
+  return entries;
+}
+
+// ============ 文本相似度 ============
+function similarity(a, b) {
+  const s1 = a.toLowerCase().replace(/[^\w\s]/g, '');
+  const s2 = b.toLowerCase().replace(/[^\w\s]/g, '');
+  if (s1 === s2) return 1;
+  const len = Math.max(s1.length, s2.length);
+  if (len === 0) return 1;
+  let matches = 0;
+  const words1 = s1.split(/\s+/);
+  const words2 = s2.split(/\s+/);
+  for (const w1 of words1) {
+    if (words2.some(w2 => w2 === w1 || (w1.length > 3 && w2.includes(w1)))) matches++;
+  }
+  return matches / Math.max(words1.length, words2.length);
+}
+
+// ============ 文本对齐 ============
+function alignSubtitles(recognized, original) {
+  const aligned = [];
+  let origIdx = 0;
+  for (const rec of recognized) {
+    let bestIdx = -1, bestScore = 0, bestText = '';
+    for (let i = Math.max(0, origIdx - 2); i < Math.min(original.length, origIdx + 10); i++) {
+      const orig = original[i];
+      const score = similarity(rec.english || rec.text, orig.english || orig.text);
+      if (score > bestScore) { bestScore = score; bestIdx = i; bestText = orig.english || orig.text; }
+    }
+    if (bestScore > 0.4) {
+      aligned.push({ ...rec, originalText: bestText, matchScore: bestScore, matchedIdx: bestIdx });
+      origIdx = bestIdx + 1;
+    } else {
+      aligned.push({ ...rec, originalText: '', matchScore: 0, matchedIdx: -1 });
+    }
+  }
+  return aligned;
+}
+
+// ============ 文本修正 ============
+const CONTRACTIONS = {
+  'dont':"don't",'cant':"can't",'wont':"won't",'its':"it's",'im':"I'm",
+  'ive':"I've",'id':"I'd",'youre':"you're",'theyre':"they're",
+  'havent':"haven't",'hasnt':"hasn't",'wouldnt':"wouldn't",'shouldnt':"shouldn't",
+  'couldnt':"couldn't",'isnt':"isn't",'arent':"aren't",'wasnt':"wasn't",
+  'thats':"that's",'whats':"what's",'whos':"who's"
+};
+const PROPER_NOUNS = new Set(['stella','benjamin','zhendong','zhuang','xianhui','ross','huo']);
+const QUESTION_STARTERS = new Set(['what','who','where','when','why','how','do','does','did','is','are','was','were','will','would','can','could','should']);
+
+function capitalizeText(text) {
+  if (!text) return '';
+  text = text.trim();
+  const words = text.split(/\s+/);
+  const isQuestion = QUESTION_STARTERS.has(words[0].toLowerCase().replace(/[^\w]/g,''));
+  const result = words.map((w, i) => {
+    const clean = w.toLowerCase().replace(/[^\w']/g, '');
+    const punct = w.replace(/[\w']/g, '');
+    let word = w;
+    if (CONTRACTIONS[clean]) word = CONTRACTIONS[clean];
+    if (i === 0 || PROPER_NOUNS.has(clean) || clean === 'i') {
+      word = word.charAt(0).toUpperCase() + word.slice(1);
+    }
+    return word;
+  }).join(' ');
+  if (!/[.!?]$/.test(result)) {
+    result += isQuestion ? '?' : '.';
+  }
+  return result;
+}
+
+function correctText(recognized, original) {
+  if (!original) return { corrected: capitalizeText(recognized), changes: [] };
+  const recWords = recognized.toLowerCase().split(/\s+/);
+  const origWords = original.toLowerCase().split(/\s+/);
+  const changes = [];
+  const corrected = recWords.map((rw, i) => {
+    const rc = rw.replace(/[^\w]/g, '');
+    if (rc.length <= 2) return rw;
+    let best = null, bestScore = 0;
+    for (const ow of origWords) {
+      const oc = ow.replace(/[^\w]/g, '');
+      if (oc.length <= 2) continue;
+      const s = similarity(rc, oc);
+      if (s > bestScore) { bestScore = s; best = oc; }
+    }
+    if (best && bestScore > 0.8 && bestScore < 1 && best !== rc) {
+      changes.push({ from: rc, to: best, score: bestScore });
+      return best + rw.replace(/[\w]/g, '').slice(best.length);
+    }
+    return rw;
+  }).join(' ');
+  return { corrected: capitalizeText(corrected), changes };
+}
+
+// ============ 时间解析 ============
+function parseTimeMs(t) {
+  const m = t.match(/(\d{2}):(\d{2}):(\d{2}),(\d{3})/);
+  return m ? parseInt(m[1])*3600000 + parseInt(m[2])*60000 + parseInt(m[3])*1000 + parseInt(m[4]) : 0;
+}
+
+// ============ 主处理函数 ============
+function processSubtitles(originalSRT, recognizedSRT) {
+  const original = parseSRT(originalSRT, true);
+  const recognized = parseSRT(recognizedSRT, false);
+  const aligned = alignSubtitles(recognized, original);
+  const matchedOriginals = new Set();
+  const timeline = [];
+
+  for (const a of aligned) {
+    if (a.matchedIdx >= 0) matchedOriginals.add(a.matchedIdx);
+    const rec = a.english || a.text;
+    const orig = a.originalText;
+    const { corrected } = correctText(rec, orig);
+    const hasChanges = corrected.toLowerCase().replace(/[^\w\s]/g,'') !== rec.toLowerCase().replace(/[^\w\s]/g,'');
+    const isExtra = a.matchedIdx < 0 || a.matchScore <= 0.4;
+    const chinese = a.matchedIdx >= 0 ? original[a.matchedIdx].chinese : '';
+    let status = 'unchanged';
+    if (hasChanges && !isExtra) status = 'modified';
+    else if (isExtra) status = 'extra';
+    timeline.push({
+      entryIndex: a.index,
+      time: `${a.startTime} --> ${a.endTime}`,
+      recognizedText: rec,
+      correctedText: corrected,
+      originalText: orig,
+      chinese: chinese || '',
+      matchScore: a.matchScore,
+      status
+    });
+  }
+
+  // 缺失条目
+  const missing = [];
+  for (let i = 0; i < original.length; i++) {
+    if (!matchedOriginals.has(i)) {
+      const o = original[i];
+      missing.push({
+        entryIndex: o.index,
+        time: `${o.startTime} --> ${o.endTime}`,
+        recognizedText: '',
+        correctedText: capitalizeText(o.english || o.text),
+        originalText: o.english || '',
+        chinese: o.chinese || '',
+        matchScore: 0,
+        status: 'missing'
+      });
+    }
+  }
+
+  // 按时间插入缺失条目
+  for (const m of missing) {
+    const mTime = parseTimeMs(m.time.split('-->')[0]);
+    let insertAt = timeline.length;
+    for (let i = 0; i < timeline.length; i++) {
+      if (parseTimeMs(timeline[i].time.split('-->')[0]) > mTime) {
+        insertAt = i;
+        break;
+      }
+    }
+    timeline.splice(insertAt, 0, m);
+  }
+
+  // 生成校对后SRT
+  const srtLines = [];
+  let idx = 1;
+  for (const t of timeline) {
+    if (t.status !== 'missing') {
+      srtLines.push(`${idx}`, t.time, t.correctedText, '');
+      idx++;
+    }
+  }
+
+  const stats = {
+    totalEntries: timeline.length,
+    modifiedCount: timeline.filter(t => t.status === 'modified').length,
+    unchangedCount: timeline.filter(t => t.status === 'unchanged').length,
+    extraCount: timeline.filter(t => t.status === 'extra').length,
+    missingCount: timeline.filter(t => t.status === 'missing').length
+  };
+
+  return { timeline, stats, correctedSRT: srtLines.join('\n') };
+}
+
+// ============ UI 交互 ============
+['originalZone','recognizedZone'].forEach(key => {
+  const zone = el[key];
+  const input = key === 'originalZone' ? el.originalFile : el.recognizedFile;
+  const nameEl = key === 'originalZone' ? el.originalFileName : el.recognizedFileName;
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; handleFile(key, e.dataTransfer.files[0].name); }
+  });
+  input.addEventListener('change', e => { if (e.target.files.length) handleFile(key, e.target.files[0].name); });
+});
+
+function handleFile(key, name) {
+  const zone = key === 'originalZone' ? el.originalZone : el.recognizedZone;
+  const nameEl = key === 'originalZone' ? el.originalFileName : el.recognizedFileName;
+  zone.classList.add('has-file');
+  nameEl.textContent = name;
+  checkFiles();
+}
+
+function checkFiles() {
+  el.processBtn.disabled = !(el.originalFile.files.length && el.recognizedFile.files.length);
+}
+
+el.processBtn.addEventListener('click', async () => {
+  if (!el.originalFile.files[0] || !el.recognizedFile.files[0]) return;
+  el.processBtn.disabled = true;
+  el.emptyState.style.display = 'none';
+  el.resultLayout.classList.remove('show');
+
+  const originalText = await el.originalFile.files[0].text();
+  const recognizedText = await el.recognizedFile.files[0].text();
+
+  try {
+    const result = processSubtitles(originalText, recognizedText);
+    displayResults(result);
+  } catch (err) {
+    alert('处理错误: ' + err.message);
+    el.emptyState.style.display = 'flex';
+  } finally {
+    el.processBtn.disabled = false;
+  }
+});
+
+function displayResults(data) {
+  const s = data.stats;
+  el.statTotal.textContent = s.totalEntries;
+  el.statModified.textContent = s.modifiedCount;
+  el.statUnchanged.textContent = s.unchangedCount;
+  el.statExtra.textContent = s.extraCount;
+  el.statMissing.textContent = s.missingCount;
+  el.downloadBtn.classList.add('show');
+  correctedSrtContent = data.correctedSRT;
+  renderTimeline(data.timeline);
+  renderPreview(data.correctedSRT);
+  el.resultLayout.classList.add('show');
+  el.timelineHeader.style.display = 'flex';
+  document.querySelector('[data-tab="timeline"]').click();
+}
+
+function renderTimeline(timeline) {
+  el.timelinePanel.innerHTML = '';
+  if (!timeline.length) { el.timelinePanel.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">无数据</div></div>'; return; }
+  const frag = document.createDocumentFragment();
+  const statusLabels = { modified: '已修正', unchanged: '未变化', extra: '建议删除', missing: '建议新增' };
+  for (const entry of timeline) {
+    const row = document.createElement('div');
+    row.className = 'timeline-row ' + entry.status;
+    row.innerHTML = `
+      <div class="timeline-time">
+        <div class="entry-idx">#${entry.entryIndex}</div>
+        <div class="entry-time">${escapeHtml(entry.time)}</div>
+        ${entry.chinese ? `<div class="entry-chinese" title="${escapeHtml(entry.chinese)}">${escapeHtml(entry.chinese)}</div>` : ''}
+      </div>
+      <div class="timeline-body">
+        ${entry.recognizedText ? `<div class="timeline-rec-text">${escapeHtml(entry.recognizedText)}</div>` : ''}
+        ${entry.correctedText ? `<div class="timeline-corrected-text">${escapeHtml(entry.correctedText)}</div>` : ''}
+        <div class="timeline-status">
+          <span class="status-badge ${entry.status}">${statusLabels[entry.status] || entry.status}</span>
+          ${entry.matchScore > 0 ? `<span style="font-size:11px;color:var(--text-muted)">匹配度 ${(entry.matchScore * 100).toFixed(0)}%</span>` : ''}
+        </div>
+      </div>`;
+    frag.appendChild(row);
+  }
+  el.timelinePanel.appendChild(frag);
+}
+
+function renderPreview(srt) {
+  const lines = srt.split('\n');
+  el.lineNumbers.innerHTML = lines.map((_, i) => `<div>${i + 1}</div>`).join('');
+  el.previewContent.textContent = srt;
+}
+
+function escapeHtml(t) {
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+el.downloadBtn.addEventListener('click', () => {
+  if (!correctedSrtContent) return;
+  const blob = new Blob([correctedSrtContent], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '校对后字幕.srt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.querySelectorAll('.side-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.side-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); if (!el.processBtn.disabled) el.processBtn.click(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (correctedSrtContent) el.downloadBtn.click(); }
+});
+</script>
+</body>
+</html>
