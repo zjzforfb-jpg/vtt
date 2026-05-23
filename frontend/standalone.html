@@ -269,9 +269,8 @@ function capitalizeText(text) {
   text = text.trim();
   const words = text.split(/\s+/);
   const isQuestion = QUESTION_STARTERS.has(words[0].toLowerCase().replace(/[^\w]/g,''));
-  const result = words.map((w, i) => {
+  let result = words.map((w, i) => {
     const clean = w.toLowerCase().replace(/[^\w']/g, '');
-    const punct = w.replace(/[\w']/g, '');
     let word = w;
     if (CONTRACTIONS[clean]) word = CONTRACTIONS[clean];
     if (i === 0 || PROPER_NOUNS.has(clean) || clean === 'i') {
