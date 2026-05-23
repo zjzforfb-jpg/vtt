@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>字幕校对工作台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg-primary:#0d1117;--bg-secondary:#161b22;--bg-tertiary:#1c2333;--bg-card:#21262d;
+--border:#30363d;--text-primary:#c9d1d9;--text-secondary:#8b949e;--text-muted:#484f58;
+--accent:#58a6ff;--accent-hover:#79b8ff;--success:#3fb950;--success-bg:rgba(63,185,80,0.08);
+--danger:#f85149;--danger-bg:rgba(248,81,73,0.08);--warning:#d29922;--warning-bg:rgba(210,153,34,0.08);
+--modified-bg:rgba(63,185,80,0.06);--extra-bg:rgba(248,81,73,0.06);--missing-bg:rgba(210,153,34,0.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg-primary);color:var(--text-primary);height:100vh;overflow:hidden}
+
+.header{height:56px;background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px}
+.logo{display:flex;align-items:center;gap:12px;font-size:18px;font-weight:600}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),#a371f7);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.header-actions{display:flex;align-items:center;gap:16px}
+.mode-toggle{display:flex;background:var(--bg-card);border-radius:8px;padding:3px;border:1px solid var(--border)}
+.mode-btn{padding:6px 14px;border:none;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;border-radius:6px;transition:all .2s;white-space:nowrap}
+.mode-btn:hover{color:var(--text-primary)}
+.mode-btn.active{background:var(--accent);color:#fff}
+.settings-btn{background:none;border:1px solid var(--border);color:var(--text-secondary);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:6px;transition:all .2s}
+.settings-btn:hover{background:var(--bg-card);color:var(--text-primary)}
+.layout{display:flex;height:calc(100vh - 56px)}
+
+.sidebar{width:320px;background:var(--bg-secondary);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-section{padding:20px;border-bottom:1px solid var(--border)}
+.sidebar-section:last-child{border-bottom:none;flex:1}
+.section-title{font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.upload-zone{border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;transition:all .3s;cursor:pointer;margin-bottom:12px}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:rgba(88,166,255,.05)}
+.upload-zone.has-file{border-color:var(--success);background:var(--success-bg)}
+.upload-icon{font-size:32px;margin-bottom:8px}
+.upload-label{font-size:14px;font-weight:500;margin-bottom:4px}
+.upload-hint{font-size:12px;color:var(--text-muted)}
+.file-selected{font-size:12px;color:var(--success);margin-top:6px;display:none}
+.upload-zone.has-file .file-selected{display:block}
+.step-indicator{display:inline-block;width:20px;height:20px;background:var(--accent);color:#fff;border-radius:50%;font-size:12px;line-height:20px;text-align:center;margin-right:8px;font-weight:600}
+.process-btn{width:100%;padding:12px;background:linear-gradient(135deg,#238636,#2ea043);color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:all .3s;margin-top:12px}
+.process-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(46,160,67,.4)}
+.process-btn:disabled{background:var(--bg-card);color:var(--text-muted);cursor:not-allowed;transform:none;box-shadow:none}
+.stats-grid{display:flex;flex-direction:column;gap:8px}
+.stat-item{background:var(--bg-card);border-radius:8px;padding:12px;display:flex;align-items:center;justify-content:space-between}
+.stat-label{font-size:13px;color:var(--text-secondary)}
+.stat-value{font-size:18px;font-weight:700}
+.stat-value.blue{color:var(--accent)}
+.stat-value.green{color:var(--success)}
+.stat-value.orange{color:var(--warning)}
+.stat-value.red{color:var(--danger)}
+.download-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .3s;display:none}
+.download-btn:hover{background:var(--accent-hover)}
+.download-btn.show{display:block}
+.main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.result-layout{display:none;flex:1;overflow:hidden}
+.result-layout.show{display:flex}
+.side-tabs{width:130px;background:var(--bg-secondary);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:12px;gap:4px}
+.side-tab-btn{padding:12px 14px;background:none;border:none;color:var(--text-secondary);font-size:13px;cursor:pointer;border-radius:8px;text-align:left;transition:all .2s;display:flex;align-items:center;gap:8px}
+.side-tab-btn:hover{background:var(--bg-card);color:var(--text-primary)}
+.side-tab-btn.active{background:var(--accent);color:#fff}
+.side-tab-icon{font-size:16px}
+.tab-content-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.tab-panel{display:none;flex:1;overflow-y:auto}
+.tab-panel.active{display:block}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-muted);padding:40px;height:100%}
+.empty-icon{font-size:64px;margin-bottom:16px;opacity:.5}
+.empty-title{font-size:20px;font-weight:600;color:var(--text-secondary);margin-bottom:8px}
+.empty-desc{font-size:14px;max-width:400px;text-align:center;line-height:1.6}
+
+.timeline-header{padding:16px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary)}
+.timeline-stats{display:flex;gap:16px;margin-left:auto;font-size:12px}
+.ts-badge{display:flex;align-items:center;gap:4px}
+.ts-dot{width:8px;height:8px;border-radius:50%}
+.ts-dot.green{background:var(--success)}
+.ts-dot.gray{background:var(--text-muted)}
+.ts-dot.red{background:var(--danger)}
+.ts-dot.yellow{background:var(--warning)}
+
+.timeline-row{display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--border);min-height:72px;transition:background .15s}
+.timeline-row:hover{background:var(--bg-card)}
+.timeline-row.modified{border-left:3px solid var(--success)}
+.timeline-row.extra{border-left:3px solid var(--danger);background:var(--extra-bg)}
+.timeline-row.missing{border-left:3px solid var(--warning);background:var(--missing-bg)}
+.timeline-row.unchanged{border-left:3px solid transparent}
+
+.timeline-time{padding:14px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border);background:var(--bg-secondary)}
+.timeline-time .entry-idx{font-size:11px;color:var(--text-muted);margin-bottom:4px}
+.timeline-time .entry-time{font-size:12px;color:var(--text-secondary);font-family:'SF Mono','Fira Code',monospace}
+.timeline-time .entry-chinese{font-size:12px;color:var(--warning);margin-top:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.timeline-body{padding:10px 16px;display:flex;flex-direction:column;gap:6px;justify-content:center}
+.timeline-rec-text{font-size:14px;color:var(--text-muted);line-height:1.4}
+.timeline-corrected-text{font-size:14px;color:var(--success);line-height:1.4}
+.timeline-status{display:flex;align-items:center;gap:8px;margin-top:2px}
+.status-badge{padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.status-badge.modified{background:var(--success-bg);color:var(--success);border:1px solid var(--success)}
+.status-badge.unchanged{background:transparent;color:var(--text-muted);border:1px solid var(--border)}
+.status-badge.extra{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger)}
+.status-badge.missing{background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning)}
+
+.timeline-row.extra .timeline-corrected-text{display:none}
+.timeline-row.missing .timeline-rec-text{display:none}
+.timeline-row.unchanged .timeline-corrected-text{color:var(--text-secondary)}
+
+.preview-wrapper{display:flex;height:100%;min-height:0}
+.line-numbers{background:var(--bg-secondary);padding:20px 12px;text-align:right;font-family:'SF Mono','Fira Code',monospace;font-size:13px;color:var(--text-muted);user-select:none;border-right:1px solid var(--border);min-width:50px}
+.line-numbers div{line-height:1.6}
+.preview-content{flex:1;background:var(--bg-primary);padding:20px;font-family:'SF Mono','Fira Code',monospace;font-size:13px;line-height:1.6;white-space:pre;color:var(--text-primary);overflow-y:auto}
+
+.settings-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.settings-modal.show{display:flex}
+.modal-content{background:var(--bg-secondary);border-radius:12px;padding:24px;width:440px;border:1px solid var(--border)}
+.modal-title{font-size:18px;font-weight:600;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:20px}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:13px;color:var(--text-secondary);margin-bottom:8px}
+.form-input{width:100%;padding:10px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:14px}
+.form-input:focus{outline:none;border-color:var(--accent)}
+.form-hint{font-size:11px;color:var(--text-muted);margin-top:4px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.btn-secondary{padding:8px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);cursor:pointer}
+.btn-primary{padding:8px 16px;background:var(--accent);border:none;border-radius:6px;color:#fff;cursor:pointer}
+.loading-overlay{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(13,17,23,.9);z-index:100;flex-direction:column;align-items:center;justify-content:center}
+.loading-overlay.show{display:flex}
+.loading-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:var(--text-secondary);font-size:14px;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+</style>
+</head>
+<body>
+<header class="header">
+<div class="logo"><div class="logo-icon">S</div><span>字幕校对工作台</span></div>
+<div class="header-actions">
+<div class="mode-toggle" id="modeToggle">
+<button class="mode-btn active" data-mode="rule">📐 规则修正</button>
+<button class="mode-btn" data-mode="ai">🤖 AI 修正</button>
+</div>
+<button class="settings-btn" id="settingsBtn"><span>⚙️</span><span>设置</span></button>
+</div>
+</header>
+<div class="layout">
+<aside class="sidebar">
+<div class="sidebar-section">
+<div class="section-title">上传字幕文件</div>
+<div class="upload-zone" id="originalZone">
+<span class="step-indicator">1</span><div class="upload-icon">📄</div>
+<div class="upload-label">原字幕文件</div><div class="upload-hint">包含中英文对照</div>
+<input type="file" id="originalFile" accept=".srt" hidden>
+<div class="file-selected" id="originalFileName">未选择文件</div>
+</div>
+<div class="upload-zone" id="recognizedZone">
+<span class="step-indicator">2</span><div class="upload-icon">🎤</div>
+<div class="upload-label">剪映导出字幕文件</div><div class="upload-hint">语音识别结果</div>
+<input type="file" id="recognizedFile" accept=".srt" hidden>
+<div class="file-selected" id="recognizedFileName">未选择文件</div>
+</div>
+<button class="process-btn" id="processBtn" disabled>开始校对</button>
+</div>
+<div class="sidebar-section">
+<div class="section-title">统计信息</div>
+<div class="stats-grid">
+<div class="stat-item"><span class="stat-label">总条目</span><span class="stat-value blue" id="statTotal">-</span></div>
+<div class="stat-item"><span class="stat-label">已修正</span><span class="stat-value green" id="statModified">-</span></div>
+<div class="stat-item"><span class="stat-label">未变化</span><span class="stat-value" style="color:var(--text-muted)" id="statUnchanged">-</span></div>
+<div class="stat-item"><span class="stat-label">建议删除</span><span class="stat-value red" id="statExtra">-</span></div>
+<div class="stat-item"><span class="stat-label">建议新增</span><span class="stat-value orange" id="statMissing">-</span></div>
+</div>
+<button class="download-btn" id="downloadBtn">⬇️ 下载校对后字幕</button>
+</div>
+</aside>
+<main class="main-area">
+<div class="empty-state" id="emptyState">
+<div class="empty-icon">🎬</div>
+<div class="empty-title">欢迎使用字幕校对工作台</div>
+<div class="empty-desc">请在左侧上传原字幕文件和识别字幕文件，<br>系统将自动进行智能校对。</div>
+</div>
+<div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div><div class="loading-text" id="loadingText">正在智能校对字幕，请稍候...</div></div>
+<div class="result-layout" id="resultLayout">
+<div class="side-tabs">
+<button class="side-tab-btn active" data-tab="timeline"><span class="side-tab-icon">📋</span><span>五线谱对比</span></button>
+<button class="side-tab-btn" data-tab="preview"><span class="side-tab-icon">👁️</span><span>完整预览</span></button>
+</div>
+<div class="tab-content-area">
+<div class="tab-panel active" id="tab-timeline">
+<div class="timeline-header" id="timelineHeader" style="display:none">
+<span>字幕时间线</span>
+<div class="timeline-stats">
+<span class="ts-badge"><span class="ts-dot green"></span>已修正</span>
+<span class="ts-badge"><span class="ts-dot gray"></span>未变化</span>
+<span class="ts-badge"><span class="ts-dot red"></span>建议删除</span>
+<span class="ts-badge"><span class="ts-dot yellow"></span>建议新增</span>
+</div>
+</div>
+<div id="timelinePanel" style="height:100%;overflow-y:auto"></div>
+</div>
+<div class="tab-panel" id="tab-preview">
+<div class="preview-wrapper"><div class="line-numbers" id="lineNumbers"></div><div class="preview-content" id="previewContent"></div></div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<div class="settings-modal" id="settingsModal">
+<div class="modal-content">
+<div class="modal-title"><span>⚙️ 设置</span><button class="modal-close" id="modalClose">&times;</button></div>
+<div class="form-group"><label class="form-label">API 服务器地址</label><input type="text" class="form-input" id="apiUrlInput" value="http://localhost:8000"></div>
+<div class="form-group"><label class="form-label">DeepSeek API Key</label><input type="password" class="form-input" id="apiKeyInput" placeholder="sk-..."><div class="form-hint">用于 AI 智能修正功能。Key 仅保存在本地浏览器中。</div></div>
+<div class="modal-actions"><button class="btn-secondary" id="modalCancel">取消</button><button class="btn-primary" id="modalSave">保存</button></div>
+</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const el={
+originalZone:$('originalZone'),recognizedZone:$('recognizedZone'),
+originalFile:$('originalFile'),recognizedFile:$('recognizedFile'),
+originalFileName:$('originalFileName'),recognizedFileName:$('recognizedFileName'),
+processBtn:$('processBtn'),loadingOverlay:$('loadingOverlay'),loadingText:$('loadingText'),
+emptyState:$('emptyState'),resultLayout:$('resultLayout'),
+statTotal:$('statTotal'),statModified:$('statModified'),statUnchanged:$('statUnchanged'),
+statExtra:$('statExtra'),statMissing:$('statMissing'),downloadBtn:$('downloadBtn'),
+settingsBtn:$('settingsBtn'),settingsModal:$('settingsModal'),
+modalClose:$('modalClose'),modalCancel:$('modalCancel'),modalSave:$('modalSave'),
+apiUrlInput:$('apiUrlInput'),apiKeyInput:$('apiKeyInput'),
+timelinePanel:$('timelinePanel'),timelineHeader:$('timelineHeader'),
+previewContent:$('previewContent'),lineNumbers:$('lineNumbers'),
+modeToggle:$('modeToggle')
+};
+function getApiUrl(){const saved=localStorage.getItem('apiUrl');if(saved)return saved;const origin=window.location.origin;if(origin!=='null'&&origin!=='file://')return origin;return'http://localhost:8000'}
+let correctedSrtContent='',apiUrl=getApiUrl(),apiKey=localStorage.getItem('deepseekApiKey')||'',currentMode='rule';
+el.apiUrlInput.value=apiUrl;el.apiKeyInput.value=apiKey;
+
+['originalZone','recognizedZone'].forEach(key=>{
+const zone=el[key],input=key==='originalZone'?el.originalFile:el.recognizedFile,nameEl=key==='originalZone'?el.originalFileName:el.recognizedFileName;
+zone.addEventListener('click',()=>input.click());
+zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag-over')});
+zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
+zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag-over');if(e.dataTransfer.files.length>0){input.files=e.dataTransfer.files;handleFile(key,e.dataTransfer.files[0].name)}});
+input.addEventListener('change',e=>{if(e.target.files.length>0)handleFile(key,e.target.files[0].name)});
+});
+function handleFile(key,name){const zone=key==='originalZone'?el.originalZone:el.recognizedZone,nameEl=key==='originalZone'?el.originalFileName:el.recognizedFileName;zone.classList.add('has-file');nameEl.textContent=name;checkFiles()}
+function checkFiles(){el.processBtn.disabled=!(el.originalFile.files.length>0&&el.recognizedFile.files.length>0)}
+
+el.modeToggle.querySelectorAll('.mode-btn').forEach(b=>b.addEventListener('click',()=>{el.modeToggle.querySelectorAll('.mode-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentMode=b.dataset.mode}));
+
+el.processBtn.addEventListener('click',async()=>{
+if(!el.originalFile.files[0]||!el.recognizedFile.files[0])return;
+el.loadingOverlay.classList.add('show');el.processBtn.disabled=true;el.emptyState.style.display='none';el.resultLayout.classList.remove('show');
+const fd=new FormData();fd.append('original_srt',el.originalFile.files[0]);fd.append('recognized_srt',el.recognizedFile.files[0]);
+const msgs=['正在解析字幕文件...','正在智能对齐时间轴...','正在修正大小写和标点...',currentMode==='ai'?'正在调用 AI 智能校对...':'正在检测识别差异...','即将完成，请稍候...'];
+let mi=0;const iv=setInterval(()=>{mi=(mi+1)%msgs.length;el.loadingText.textContent=msgs[mi]},800);
+try{
+const endpoint=currentMode==='ai'?'/api/v1/proofread/ai':'/api/v1/proofread';
+const headers={};if(currentMode==='ai'&&apiKey)headers['X-API-Key']=apiKey;
+const resp=await fetch(apiUrl+endpoint,{method:'POST',body:fd});
+if(!resp.ok){const err=await resp.json();throw new Error(err.detail||'处理失败')}
+const data=await resp.json();if(!data.success)throw new Error('处理失败');
+displayResults(data.data);
+}catch(err){alert('错误: '+err.message);el.emptyState.style.display='flex'}finally{clearInterval(iv);el.loadingOverlay.classList.remove('show');el.processBtn.disabled=false}
+});
+
+function displayResults(data){
+const s=data.stats;el.statTotal.textContent=s.total_entries||0;el.statModified.textContent=s.modified_count||0;
+el.statUnchanged.textContent=s.unchanged_count||0;el.statExtra.textContent=s.extra_count||0;el.statMissing.textContent=s.missing_count||0;
+el.downloadBtn.classList.add('show');correctedSrtContent=data.corrected_srt;
+renderTimeline(data.timeline||[]);renderPreview(data.corrected_srt);
+el.resultLayout.classList.add('show');el.timelineHeader.style.display='flex';
+document.querySelector('[data-tab="timeline"]').click();
+}
+
+function renderTimeline(timeline){
+el.timelinePanel.innerHTML='';if(!timeline.length){el.timelinePanel.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">无数据</div></div>';return}
+const frag=document.createDocumentFragment();
+timeline.forEach(entry=>{
+const row=document.createElement('div');row.className='timeline-row '+entry.status;
+const timeDiv=document.createElement('div');timeDiv.className='timeline-time';
+timeDiv.innerHTML='<div class="entry-idx">#'+entry.entry_index+'</div><div class="entry-time">'+escapeHtml(entry.time)+'</div>'+(entry.chinese?'<div class="entry-chinese" title="'+escapeHtml(entry.chinese)+'">'+escapeHtml(entry.chinese)+'</div>':'');
+const bodyDiv=document.createElement('div');bodyDiv.className='timeline-body';
+const statusLabels={modified:'已修正',unchanged:'未变化',extra:'建议删除',missing:'建议新增'};
+let bodyHTML='';
+if(entry.recognized_text)bodyHTML+='<div class="timeline-rec-text">'+escapeHtml(entry.recognized_text)+'</div>';
+if(entry.corrected_text)bodyHTML+='<div class="timeline-corrected-text">'+escapeHtml(entry.corrected_text)+'</div>';
+bodyHTML+='<div class="timeline-status"><span class="status-badge '+entry.status+'">'+(statusLabels[entry.status]||entry.status)+'</span>'+(entry.match_score>0?'<span style="font-size:11px;color:var(--text-muted)">匹配度 '+(entry.match_score*100).toFixed(0)+'%</span>':'')+'</div>';
+bodyDiv.innerHTML=bodyHTML;row.appendChild(timeDiv);row.appendChild(bodyDiv);frag.appendChild(row);
+});
+el.timelinePanel.innerHTML='';el.timelinePanel.appendChild(frag);
+}
+
+function renderPreview(srt){const lines=srt.split('\n');let ns='',c='';lines.forEach((l,i)=>{ns+='<div>'+(i+1)+'</div>';c+=escapeHtml(l)+'\n'});el.lineNumbers.innerHTML=ns;el.previewContent.innerHTML=c}
+function escapeHtml(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
+
+el.downloadBtn.addEventListener('click',()=>{if(!correctedSrtContent)return;const b=new Blob([correctedSrtContent],{type:'text/plain;charset=utf-8'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='校对后字幕.srt';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u)});
+
+document.querySelectorAll('.side-tab-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.side-tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('tab-'+btn.dataset.tab).classList.add('active')}));
+
+el.settingsBtn.addEventListener('click',()=>el.settingsModal.classList.add('show'));
+el.modalClose.addEventListener('click',()=>el.settingsModal.classList.remove('show'));
+el.modalCancel.addEventListener('click',()=>el.settingsModal.classList.remove('show'));
+el.modalSave.addEventListener('click',()=>{apiUrl=el.apiUrlInput.value.replace(/\/$/,'');apiKey=el.apiKeyInput.value.trim();localStorage.setItem('apiUrl',apiUrl);localStorage.setItem('deepseekApiKey',apiKey);el.settingsModal.classList.remove('show')});
+el.settingsModal.addEventListener('click',e=>{if(e.target===el.settingsModal)el.settingsModal.classList.remove('show')});
+
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();if(!el.processBtn.disabled)el.processBtn.click()}if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();if(correctedSrtContent)el.downloadBtn.click()}});
+</script>
+</body>
+</html>
